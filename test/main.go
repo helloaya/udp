@@ -9,7 +9,7 @@ import (
 	"udp/msg"
 )
 
-var TOTAL_PACKS uint32 = 1000
+var TOTAL_PACKS uint32 = 128 * 100 
 func runServer () {
 	fmt.Println ("runServer")
 	listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 9999})
@@ -71,6 +71,7 @@ func runClient () {
 		time.Sleep (time.Duration(w))
 	}
 	d := time.Since (s)
+	fmt.Println (d)
 	m.Index = n
 	i = 0
 	for i<10 {
@@ -82,7 +83,6 @@ func runClient () {
 		i += 1
 		time.Sleep (time.Second)
 	}
-	fmt.Println (d)
 }
 
 func main() {
