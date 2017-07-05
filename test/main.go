@@ -29,7 +29,7 @@ func runServer () {
 			fmt.Println(err)
 			return
 		}
-		fmt.Println (m, remote)
+		fmt.Println (m.Index, remote)
 
 	}
 }
