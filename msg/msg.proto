@@ -1,0 +1,49 @@
+syntax = "proto3";
+package msg;
+
+
+message Command {
+	Type type = 1;
+	enum Type {
+		SUBCRIBE = 0;
+		SUBCRIBE_ACK = 1;
+		REPORT = 2;
+		BYE = 3;
+	}
+	
+	Subcribe subcribe = 2;
+	message Subcribe {
+		uint32 ClientUUID = 1;  //客户端ID
+		string ResouceID  = 2;  //资源ID
+		uint32 Start	  = 3;  //订阅的起始片段, 0起始
+		uint32 End		  = 4;  //订阅的结束片段
+	};
+
+	SubcribeAck subcribeAck = 3;
+	message SubcribeAck {
+		string ResouceID   = 1; //资源ID
+		uint32 SessionID   = 2; //会话ID
+		bool   IsAccepted  = 3; //是否接受请求
+	};
+
+	Report report = 4;
+	message Report {
+		uint32  SessionID = 1; 		//会话ID
+		uint32	TotalRecved = 2; 	//到目前为止收到的包
+		uint32	LastRecved	= 3;	//最近一秒收到的包
+		repeated uint64 Bitmap = 4; //标识接收情况的位图,  第N位为1,代表第N片已经收到
+	};
+
+	Bye bye = 5;
+	message Bye {
+		uint32  SessionID = 1;	//会话ID
+	};
+};
+
+message Pack {
+	uint32  SessionID = 1;	//会话ID
+	uint32	Index	  = 2;	//片段索引
+	bytes	Data	  = 3;	//负载,最大1400字节 
+};
+
+
