@@ -9,6 +9,7 @@ import (
 	"udp/msg"
 )
 
+var TOTAL_PACKS uint32 = 1000
 func runServer () {
 	fmt.Println ("runServer")
 	listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 9999})
@@ -17,8 +18,9 @@ func runServer () {
 		return
 	}
 	data := make([]byte, 2048)
+	var total uint32 = 0
 	for {
-		n, remote, err := listener.ReadFromUDP(data)
+		n, _, err := listener.ReadFromUDP(data)
 		if err != nil {
 			fmt.Printf("error during read: %s", err)
 		}
@@ -29,9 +31,12 @@ func runServer () {
 			fmt.Println(err)
 			return
 		}
-		fmt.Println (m.Index, remote)
-
+		if m.Index == TOTAL_PACKS {
+			break
+		}
+		total += 1
 	}
+	fmt.Println ("Loss", float32(TOTAL_PACKS - total)/float32(TOTAL_PACKS))
 }
 
 func runClient () {
@@ -51,7 +56,7 @@ func runClient () {
 	defer conn.Close()
 
 	var i uint32 = 0
-	var n uint32 = 1000
+	var n uint32 = TOTAL_PACKS
 	s := time.Now ()
 	w := uint32(time.Second) / n
 	fmt.Println (time.Duration(w))
@@ -66,6 +71,17 @@ func runClient () {
 		time.Sleep (time.Duration(w))
 	}
 	d := time.Since (s)
+	m.Index = n
+	i = 0
+	for i<10 {
+		out,err := proto.Marshal (m)
+		if nil != err {
+			fmt.Println (err)
+		}
+		conn.Write (out)
+		i += 1
+		time.Sleep (time.Second)
+	}
 	fmt.Println (d)
 }
 
