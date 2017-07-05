@@ -18,19 +18,19 @@ func runServer () {
 	}
 	data := make([]byte, 2048)
 	for {
-		_, _, err := listener.ReadFromUDP(data)
+		n, remote, err := listener.ReadFromUDP(data)
 		if err != nil {
 			fmt.Printf("error during read: %s", err)
 		}
 		m := &msg.Pack {
-			Data : make([]byte, 1400),
 		}
-		err = proto.Unmarshal (data, m)
+		err = proto.Unmarshal (data[:n], m)
 		if nil != err {
 			fmt.Println(err)
 			return
 		}
-		fmt.Println (m)
+		fmt.Println (m, remote)
+
 	}
 }
 
