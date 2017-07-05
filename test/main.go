@@ -10,6 +10,7 @@ import (
 )
 
 func runServer () {
+	fmt.Println ("runServer")
 	listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 9999})
 	if err != nil {
 		fmt.Println(err)
@@ -21,7 +22,9 @@ func runServer () {
 		if err != nil {
 			fmt.Printf("error during read: %s", err)
 		}
-		m := &msg.Pack {}
+		m := &msg.Pack {
+			Data : make([]byte, 1400),
+		}
 		err = proto.Unmarshal (data, m)
 		if nil != err {
 			fmt.Println(err)
@@ -32,6 +35,7 @@ func runServer () {
 }
 
 func runClient () {
+	fmt.Println ("runClient")
 	m := &msg.Pack {
 		SessionID : 1,
 		Index : 0,
