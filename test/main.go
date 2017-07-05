@@ -9,7 +9,7 @@ import (
 	"udp/msg"
 )
 
-var TOTAL_PACKS uint32 = 128 * 100 
+var TOTAL_PACKS uint32 = 128 * 10 
 func runServer () {
 	fmt.Println ("runServer")
 	listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 9999})
