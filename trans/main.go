@@ -75,7 +75,7 @@ func (mgr *ChansManager)Run() error {
 			log.Println(err)
 			continue
 		}
-		if _, err := mgr.conn.Write (out); nil != err {
+		if _, err := mgr.conn.WriteTo (out, remote); nil != err {
 			//忽略这个错误
 			log.Println(err)
 			continue
