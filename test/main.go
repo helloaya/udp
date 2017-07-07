@@ -10,7 +10,8 @@ import (
 
 func SendReqChan () {
 	srcAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
-	dstAddr := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8888}
+	//dstAddr := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8888}
+	dstAddr := &net.UDPAddr{IP: net.ParseIP("172.16.0.120"), Port: 8888}
 	conn, err := net.DialUDP("udp", srcAddr, dstAddr)
 	if err != nil {
 		fmt.Println(err)
