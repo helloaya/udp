@@ -26,6 +26,18 @@ func SendReqChan () {
 		return
 	}
 	conn.Write (out)
+	buffer := make([]byte, 1500)
+	n, err := conn.Read (buffer)
+	if nil != err {
+		resp := &msg.ReqChanAck {}
+		if err := proto.Unmarshal (buffer[:n], resp); nil != err {
+			//忽略这个错误
+			fmt.Println (err)
+			return
+		}
+		fmt.Println (resp)
+	}
+
 }
 
 func main() {

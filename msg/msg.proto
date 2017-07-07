@@ -8,7 +8,7 @@ message ReqChan {
 message ReqChanAck {
 	uint32 ClientUUID = 1;
 	uint32 ChanID = 2;		//通道ID
-	uint32 ChanPort = 3;	//通道端口
+	int32 ChanPort = 3;	//通道端口
 }
 
 message Pack {

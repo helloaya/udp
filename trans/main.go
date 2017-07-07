@@ -9,15 +9,17 @@ import (
 )
 
 
-
-
-func HandleReqChan(req *msg.ReqChan, remote *net.UDPAddr) error {
-	log.Println ("Req = ", req.ClientUUID, "From", remote)
-	return nil
+type Session struct {
+	ChanID uint32
+	SessionID uint32
+	ClientUUID uint32
+	Port int32
 }
+
 
 type ChansManager struct {
 	conn *net.UDPConn
+	sess map[uint32]*Session
 }
 
 func MakeChansManager (listenPort int) (*ChansManager, error) {
@@ -28,8 +30,10 @@ func MakeChansManager (listenPort int) (*ChansManager, error) {
 	m := &ChansManager{
 		conn : listener,
 	}
+	m.sess = make(map[uint32]*Session)
 	return m, nil
 }
+
 
 func (mgr *ChansManager)Run() error {
 	buffer := make([]byte, 1500)
@@ -41,12 +45,39 @@ func (mgr *ChansManager)Run() error {
 		req := &msg.ReqChan {}
 		if err := proto.Unmarshal (buffer[:n], req); nil != err {
 			//忽略这个错误
-			log.Fatal(err)
+			log.Println(err)
 			continue
 		}
-		if err := HandleReqChan (req, remote); nil != err {
+
+		log.Println ("Req = ", req.ClientUUID, "From", remote)
+		///根据ClientUUID检查Session是否已经存在
+		s,ok := mgr.sess[req.ClientUUID]
+		if !ok {
+			///不存在,创建Session
+			s = &Session {
+				ChanID : 18888,
+				SessionID : 0,
+				ClientUUID : req.ClientUUID,
+				Port : 8889,
+			}
+			mgr.sess[req.ClientUUID] = s
+		}
+
+		///响应ReqChanAck
+		resp := &msg.ReqChanAck {
+			ClientUUID : s.ClientUUID,
+			ChanID : s.ClientUUID,
+			ChanPort : s.Port,
+		}
+		out,err := proto.Marshal (resp)
+		if nil != err {
 			//忽略这个错误
-			log.Fatal(err)
+			log.Println(err)
+			continue
+		}
+		if _, err := mgr.conn.Write (out); nil != err {
+			//忽略这个错误
+			log.Println(err)
 			continue
 		}
 	}
@@ -56,13 +87,11 @@ func (mgr *ChansManager)Run() error {
 func main() {
 	mgr,err := MakeChansManager (8888)
 	if nil != err {
-		log.Fatal (err)
-		return
+		log.Panic (err)
 	}
 	err = mgr.Run()
 	if nil != err {
-		log.Fatal (err)
-		return
+		log.Panic (err)
 	}
 }
 
