@@ -1,8 +1,17 @@
 syntax = "proto3";
 package msg;
 
+message ReqChan {
+	uint32 ClientUUID = 1; 
+}
 
-message Command {
+message ReqChanAck {
+	uint32 ClientUUID = 1;
+	uint32 ChanID = 2;		//通道ID
+	uint32 ChanPort = 3;	//通道端口
+}
+
+message Pack {
 	Type type = 1;
 	enum Type {
 		SUBCRIBE = 0;
@@ -13,7 +22,7 @@ message Command {
 	
 	Subcribe subcribe = 2;
 	message Subcribe {
-		uint32 ClientUUID = 1;  //客户端ID
+		uint32 ChanID 	  = 1;  //通道ID, 从ReqChanAck获取
 		string ResouceID  = 2;  //资源ID
 		uint32 Start	  = 3;  //订阅的起始片段, 0起始
 		uint32 End		  = 4;  //订阅的结束片段
@@ -34,16 +43,18 @@ message Command {
 		repeated uint64 Bitmap = 4; //标识接收情况的位图,  第N位为1,代表第N片已经收到
 	};
 
-	Bye bye = 5;
-	message Bye {
+	Release release = 5;
+	message Release {
+		uint32  ChanID = 1;	//通道ID
+	};
+
+	Data data = 6;
+	message Data {
 		uint32  SessionID = 1;	//会话ID
+		uint32	Index	  = 2;	//片段索引
+		bytes	Data	  = 3;	//负载,最大1400字节 
 	};
 };
 
-message Pack {
-	uint32  SessionID = 1;	//会话ID
-	uint32	Index	  = 2;	//片段索引
-	bytes	Data	  = 3;	//负载,最大1400字节 
-};
 
 
