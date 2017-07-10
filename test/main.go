@@ -9,20 +9,10 @@ import (
 )
 
 
-func SendPack(p* msg.Pack, conn *net.UDPConn) error {
-	out,err := proto.Marshal (p)
-	if nil != err {
-		log.Panic(err)
-	}
-	n, err:= conn.Write (out)
-	log.Println (n, err)
-	return err
-}
-
 func SendReqChan() (uint32, uint32){
 	srcAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
-	//dstAddr := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8888}
-	dstAddr := &net.UDPAddr{IP: net.ParseIP("172.16.0.120"), Port: 8888}
+	dstAddr := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8888}
+	//dstAddr := &net.UDPAddr{IP: net.ParseIP("172.16.0.120"), Port: 8888}
 	conn, err := net.DialUDP("udp", srcAddr, dstAddr)
 	if err != nil {
 		log.Panic(err)
@@ -48,11 +38,21 @@ func SendReqChan() (uint32, uint32){
 	return resp.ChanID, resp.ChanPort
 }
 
+func SendPack(p* msg.Pack, conn *net.UDPConn) error {
+	out,err := proto.Marshal (p)
+	if nil != err {
+		log.Panic(err)
+	}
+	n, err:= conn.Write (out)
+	log.Println (n, err)
+	return err
+}
 
-func EnterChan(chanID uint32, port uint32) {
+func EnterChan(chanID uint32, port int) {
 	log.Printf("EnterChan chanID=%d, port=%d\n",chanID, port)
 	srcAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
-	dstAddr := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: int(port)}
+	dstAddr := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: port}
+	//dstAddr := &net.UDPAddr{IP: net.ParseIP("172.16.0.120"), Port: int(port)}
 	conn, err := net.DialUDP("udp", srcAddr, dstAddr)
 	if err != nil {
 		log.Panic(err)
@@ -88,7 +88,7 @@ func EnterChan(chanID uint32, port uint32) {
 func main() {
 	chanID,port := SendReqChan ()
 	time.Sleep (time.Second * 1)
-	EnterChan (chanID, port)
+	EnterChan (chanID, int(port))
 }
 
 

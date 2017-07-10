@@ -11,10 +11,9 @@ func main() {
 	if nil != err {
 		log.Panic (err)
 	}
+	
 	err = mgr.Run()
 	if nil != err {
 		log.Panic (err)
 	}
 }
-
-

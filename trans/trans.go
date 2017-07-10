@@ -32,6 +32,11 @@ func MakeChansManager(listenPort int) (*ChansManager, error) {
 }
 
 
+func (mgr *ChansManager) clearChan(clientID uint32) {
+	mgr.chansLock.Lock ()
+	defer mgr.chansLock.Unlock ()
+	delete (mgr.chans, clientID)
+}
 
 func (mgr *ChansManager) makeChan(clientID uint32) (*Chan, error){
 	mgr.chansLock.Lock ()
@@ -56,14 +61,6 @@ func (mgr *ChansManager) makeChan(clientID uint32) (*Chan, error){
 	return c,nil
 }
 
-func (mgr *ChansManager) clearChan(clientID uint32) {
-	mgr.chansLock.Lock ()
-	defer mgr.chansLock.Unlock ()
-	delete (mgr.chans, clientID)
-}
-
-
-
 func (mgr *ChansManager)Run() error {
 	buffer := make([]byte, 1500)
 	for {
@@ -86,7 +83,7 @@ func (mgr *ChansManager)Run() error {
 		///响应ReqChanAck
 		resp := &msg.ReqChanAck {
 			ClientID : c.ClientID,
-			ChanID : c.ClientID,
+			ChanID : c.ChanID,
 			ChanPort : uint32(c.Port),
 		}
 		out,err := proto.Marshal (resp)

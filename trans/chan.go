@@ -26,14 +26,13 @@ type Chan struct {
 
 func doSubscribe(conn *net.UDPConn,p *msg.Pack) {
 	log.Printf ("Subcribe:[%s][%d - %d]\n", p.Subcribe.ResouceID, p.Subcribe.Start, p.Subcribe.End)
-
+	
 }
+
 
 
 func (c *Chan) Run(mgr *ChansManager) {
 	log.Printf ("Chan[%d] Running\n",c.ChanID)
-
-
 	status := STATUS_WAIT_SUBSCRIBE
 	buffer := make([]byte, 1500)
 	for {
