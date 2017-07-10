@@ -4,9 +4,10 @@ import (
 	"log"
 	"net"
 	"sync"
-	"github.com/golang/protobuf/proto"
 	"udp/msg"
+	"udp/file"
 	"math/rand"
+	"github.com/golang/protobuf/proto"
 )
 
 
@@ -15,11 +16,12 @@ type ChansManager struct {
 	listener *net.UDPConn
 	chans map[uint32]*Chan
 	chansLock sync.Mutex
+	reader file.Reader 
 }
 
 
 
-func MakeChansManager(listenPort int) (*ChansManager, error) {
+func MakeChansManager(listenPort int, reader file.Reader) (*ChansManager, error) {
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: listenPort})
 	if nil != err {
 		return nil, err
@@ -28,6 +30,7 @@ func MakeChansManager(listenPort int) (*ChansManager, error) {
 		listener : conn,
 	}
 	m.chans = make(map[uint32]*Chan)
+	m.reader = reader
 	return m, nil
 }
 

@@ -38,14 +38,13 @@ func SendReqChan() (uint32, uint32){
 	return resp.ChanID, resp.ChanPort
 }
 
-func SendPack(p* msg.Pack, conn *net.UDPConn) error {
+func SendPack(p* msg.Pack, conn *net.UDPConn) {
 	out,err := proto.Marshal (p)
 	if nil != err {
 		log.Panic(err)
 	}
-	n, err:= conn.Write (out)
-	log.Println (n, err)
-	return err
+	conn.Write (out)
+	log.Println ("Send", *p)
 }
 
 func EnterChan(chanID uint32, port int) {
@@ -64,11 +63,13 @@ func EnterChan(chanID uint32, port int) {
 	sub.Type = msg.Pack_SUBCRIBE
 	sub.Subcribe = &msg.Pack_Subcribe {}
 	sub.Subcribe.ChanID = chanID
-	sub.Subcribe.ResouceID = "ABCDEFG"
+	sub.Subcribe.ResouceID = "ABCD"
 	sub.Subcribe.Start = 0
 	sub.Subcribe.End = 128
 	SendPack (sub, conn)
 
+	time.Sleep (time.Second * 1)
+	log.Println ("...")
 	///等待SubscribeAck
 	buffer := make([]byte, 1500)
 	n, err := conn.Read (buffer)
@@ -79,7 +80,7 @@ func EnterChan(chanID uint32, port int) {
 	if err := proto.Unmarshal (buffer[:n], subAck); nil != err {
 		log.Panic(err)
 	}
-	log.Printf ("SubcribeAck %d\n", subAck.SubcribeAck.SessionID)
+	log.Println ("SubcribeAck", subAck)
 }
 
 
