@@ -2,13 +2,13 @@ syntax = "proto3";
 package msg;
 
 message ReqChan {
-	uint32 ClientUUID = 1; 
+	uint32 ClientID = 1; 
 }
 
 message ReqChanAck {
-	uint32 ClientUUID = 1;
+	uint32 ClientID = 1;
 	uint32 ChanID = 2;		//通道ID
-	int32 ChanPort = 3;	//通道端口
+	uint32 ChanPort = 3;	//通道端口
 }
 
 message Pack {
