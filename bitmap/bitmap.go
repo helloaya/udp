@@ -54,7 +54,7 @@ func (b *Bitmap) Setbit(index uint32, isSet bool) bool {
 	i := l / 8
 	o := l % 8
 	if isSet {
-		b.Bits[i] = b.Bits[i] & (1 << o)
+		b.Bits[i] = b.Bits[i] | (1 << o)
 	} else {
 		b.Bits[i] = b.Bits[i] &^ (1 << o)
 	}

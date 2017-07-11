@@ -43,13 +43,19 @@ func SendReqChan() (uint32, uint32){
 	return resp.ChanID, resp.ChanPort
 }
 
+func displayPack (p *msg.Pack) {
+	if p.Type == msg.Pack_REPORT {
+		log.Println ("Report, bits=", p.Report.Bitmap)
+	}
+}
+
 func SendPack(p* msg.Pack, conn *net.UDPConn) {
 	out,err := proto.Marshal (p)
 	if nil != err {
 		log.Panic(err)
 	}
 	conn.Write (out)
-	log.Println ("Send", *p)
+	displayPack(p)
 }
 
 func Subcribe(chanID uint32, conn *net.UDPConn) uint32{
@@ -120,7 +126,7 @@ func RecvData (sessionID uint32, conn *net.UDPConn) {
 		}
 		if time.Millisecond * 500 < time.Since (reportTick)  {
 			reportTick = time.Now ()
-			SendReport (sessionID, bits.Get(), conn);
+			SendReport (sessionID, bits.Get(), 0, 0, conn);
 		}
 
 		if bits.IsComplete () {

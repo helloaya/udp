@@ -12,7 +12,7 @@ import (
 )
 
 
-const CHAN_RECV_TIMEOUT  = 10
+const CHAN_RECV_TIMEOUT  = time.Second * 10 
 const STATUS_WAIT_REPORT  = 1
 const STATUS_WAIT_SUBSCRIBE  = 2
 
@@ -74,7 +74,7 @@ func handleSubscribe(c *Chan, p *msg.Pack, remote *net.UDPAddr, mgr *ChansManage
 	subAck.SubcribeAck.SessionID = c.SessionID
 	subAck.SubcribeAck.IsAccepted = true
 	sendPack (subAck, c.Conn, remote)
-	return false
+	return true
 }
 
 
@@ -95,25 +95,32 @@ func sendData(c *Chan,  remote *net.UDPAddr) {
 	interval := time.Second / time.Duration(rate * 1024 / file.SIZE_PIECE) //估算发送包的间隔
 	index := c.Bitmap.Start
 
-	log.Printf ("Prepare: Rate=%d,Packs=%d, Interval=%d\n",
-			rate,packs,interval)
+	log.Printf ("Prepare: Rate=%d,Packs=%d, Interval=%d\n",rate,packs,interval)
 	for 0 < packs {
-		p := &msg.Pack {}
-		p.Type = msg.Pack_DATA
-		p.Data = &msg.Pack_Data {}
-		p.Data.SessionID = c.SessionID
-		p.Data.Index = index
-		p.Data.Payload = c.file.GetPiece (index)
-		sendPack (p, c.Conn, remote)
+		if !c.Bitmap.Getbit(index) {
+			p := &msg.Pack {}
+			p.Type = msg.Pack_DATA
+			p.Data = &msg.Pack_Data {}
+			p.Data.SessionID = c.SessionID
+			p.Data.Index = index
+			p.Data.Payload = c.file.GetPiece (index)
+			sendPack (p, c.Conn, remote)
+			packs -= 1
+			time.Sleep (interval)
+		}
 		index += 1
 		if index > c.Bitmap.End {
 			index = c.Bitmap.Start
 		}
-		packs -= 1
-		time.Sleep (interval)
 	}
 }
 
+
+func displayPack (p *msg.Pack) {
+	if p.Type == msg.Pack_REPORT {
+		log.Println ("Report, bits=", p.Report.Bitmap)
+	}
+}
 
 func (c *Chan) Run(mgr *ChansManager) {
 	defer c.Conn.Close ()
@@ -121,7 +128,7 @@ func (c *Chan) Run(mgr *ChansManager) {
 	status := STATUS_WAIT_SUBSCRIBE
 	buffer := make([]byte, 1500)
 	for {
-		expire := time.Now ().Add (time.Second * CHAN_RECV_TIMEOUT)
+		expire := time.Now ().Add (CHAN_RECV_TIMEOUT)
 		c.Conn.SetReadDeadline (expire)
 		n, remote, err := c.Conn.ReadFromUDP (buffer)
 		if nil != err {
@@ -141,7 +148,8 @@ func (c *Chan) Run(mgr *ChansManager) {
 			log.Println(err)
 			continue
 		}
-
+		
+		displayPack (p)
 		/// 分发处理请求
 		switch p.Type {
 		case msg.Pack_SUBCRIBE:
