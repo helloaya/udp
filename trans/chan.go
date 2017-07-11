@@ -35,7 +35,11 @@ func sendPack(p* msg.Pack, conn *net.UDPConn, remote *net.UDPAddr) {
 		log.Panic(err)
 	}
 	conn.WriteTo (out, remote)
-	log.Println ("Send", *p)
+	if p.Type != msg.Pack_DATA {
+		log.Println ("Send", *p)
+	} else {
+		log.Println ("Send Data, index=", p.Data.Index,)
+	}
 }
 
 

@@ -33,6 +33,18 @@ func (b *Bitmap) Get() []byte {
 	return b.Bits
 }
 
+func (b *Bitmap) IsComplete() bool {
+	i := b.Start
+	j := b.End
+	for i < j {
+		if !b.Getbit(i) {
+			return false
+		}
+		i += 1
+	}
+	return true
+}
+
 func (b *Bitmap) Setbit(index uint32, isSet bool) bool {
 	if index < b.Start || index > b.End {
 		log.Printf ("Setbit failed, index %d out of range", index)

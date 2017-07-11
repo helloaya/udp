@@ -79,7 +79,18 @@ func Subcribe(chanID uint32, conn *net.UDPConn) uint32{
 	return subAck.SubcribeAck.SessionID
 }
 
-func SendReport (sessionID uint32, bits []byteconn *net.UDPConn) {
+func SendReport (sessionID uint32, bits []byte, total uint32, last uint32,conn *net.UDPConn) {
+	report := &msg.Pack {}
+	report.Type = msg.Pack_REPORT
+	report.Report = &msg.Pack_Report {}
+	report.Report.SessionID = sessionID
+	report.Report.TotalRecved = total
+	report.Report.LastRecved = last
+	report.Report.Bitmap = bits
+	SendPack (report, conn)
+}
+
+func SendRelease (sessionID uint32, conn *net.UDPConn) {
 
 }
 
@@ -109,7 +120,12 @@ func RecvData (sessionID uint32, conn *net.UDPConn) {
 		}
 		if time.Millisecond * 500 < time.Since (reportTick)  {
 			reportTick = time.Now ()
-			SendReport (conn);
+			SendReport (sessionID, bits.Get(), conn);
+		}
+
+		if bits.IsComplete () {
+			log.Println ("Recv data complete")
+			break
 		}
 	}
 }
@@ -126,7 +142,8 @@ func main() {
 	}
 	defer conn.Close()
 	sessionID := Subcribe (chanID, conn)
-	RecvData (sessionID, conn)
+	RecvData(sessionID, conn)
+	SendRelease(sessionID, conn)
 }
 
 
