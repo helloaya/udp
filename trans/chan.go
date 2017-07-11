@@ -11,7 +11,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-const PACK_RECV_MAXTIMEOUT = time.Second * 5
+const PACK_RECV_MAXTIMEOUT = time.Second * 2
 const PACK_RECV_TIMEOUT  = time.Millisecond * 100 
 const STATUS_WAIT_REPORT  = 1
 const STATUS_WAIT_SUBSCRIBE  = 2
@@ -190,11 +190,11 @@ func (c *Chan) Run(mgr *ChansManager) {
 			if !handlePack (c, p, remote, mgr) {
 				break
 			}
+			timeout = time.Now ()
 		}
 
 		/// 发送数据
 		sendData (c)
-		timeout = time.Now ()
 	}
 
 	///Chan完成
