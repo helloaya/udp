@@ -47,7 +47,7 @@ func sendPack(p* msg.Pack, conn *net.UDPConn, remote *net.UDPAddr) {
 
 
 func handleSubscribe(c *Chan, p *msg.Pack, remote *net.UDPAddr, mgr *ChansManager) bool {
-	if p.Subcribe.ChanID != c.ChanID {
+	if nil == p.Subcribe || p.Subcribe.ChanID != c.ChanID {
 		log.Println ("Invalid Subcribe", *p)
 		return false
 	}
@@ -90,7 +90,7 @@ func handleSubscribe(c *Chan, p *msg.Pack, remote *net.UDPAddr, mgr *ChansManage
 
 
 func handleReport(c *Chan, p *msg.Pack, remote *net.UDPAddr, mgr *ChansManager) bool {
-	if c.SessionID != p.Report.SessionID {
+	if nil == p.Report || nil == p.Report.Bitmap || c.SessionID != p.Report.SessionID {
 		log.Println ("Invalid Report", *p)
 		return false
 	}
@@ -99,16 +99,9 @@ func handleReport(c *Chan, p *msg.Pack, remote *net.UDPAddr, mgr *ChansManager) 
 }
 
 
-func displayPack(p *msg.Pack) {
-	if p.Type == msg.Pack_REPORT {
-		log.Println ("Report, bits=", p.Report.Bitmap)
-	} else {
-		log.Println ("Recv", *p)
-	}
-}
 
 func handlePack(c *Chan, p* msg.Pack, remote *net.UDPAddr, mgr *ChansManager) bool {
-	displayPack (p)
+	log.Println ("Recv",*p)
 
 	/// 分发处理请求
 	switch p.Type {
