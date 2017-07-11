@@ -137,7 +137,8 @@ func handlePack(c *Chan, p* msg.Pack, remote *net.UDPAddr, mgr *ChansManager) bo
 
 func sendData(c *Chan) {
 	if nil != c.Remote && !c.Bitmap.IsComplete(){
-		for {
+		sent := false
+		for !sent {
 			if !c.Bitmap.Getbit(c.SendIndex) {
 				p := &msg.Pack {}
 				p.Type = msg.Pack_DATA
@@ -146,8 +147,7 @@ func sendData(c *Chan) {
 				p.Data.Index = c.SendIndex
 				p.Data.Payload = c.file.GetPiece (c.SendIndex)
 				sendPack (p, c.Conn, c.Remote)
-				c.SendIndex += 1
-				break
+				sent = true
 			}
 			c.SendIndex += 1
 			if c.SendIndex > c.Bitmap.End {
@@ -192,7 +192,6 @@ func (c *Chan) Run(mgr *ChansManager) {
 			}
 			timeout = time.Now ()
 		}
-
 		/// 发送数据
 		sendData (c)
 	}
