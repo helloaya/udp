@@ -3,22 +3,24 @@ package main
 import (
 	"log"
 	"net"
+	"time"
 	"github.com/golang/protobuf/proto"
 	"udp/msg"
-	"time"
+	"udp/bitmap"
 )
 
 var (
 	RESOURCE_ID = "1496830040.ts"
 	RESOURCE_START uint32 = 0
 	RESOURCE_END  uint32 = 960
+	//SERVER_IP = "172.16.0.120"
+	SERVER_IP = "127.0.0.1"
 )
 
 func SendReqChan() (uint32, uint32){
 	conn, err := net.DialUDP("udp", 
 						&net.UDPAddr{IP: net.IPv4zero, Port: 0}, 
-						&net.UDPAddr{IP: net.ParseIP("127.0.0.1"), 
-						//dstAddr := &net.UDPAddr{IP: net.ParseIP("172.16.0.120"), Port: 8888}
+						&net.UDPAddr{IP: net.ParseIP(SERVER_IP),
 						Port: int(8888)})
 	defer conn.Close()
 
@@ -77,8 +79,14 @@ func Subcribe(chanID uint32, conn *net.UDPConn) uint32{
 	return subAck.SubcribeAck.SessionID
 }
 
+func SendReport (sessionID uint32, bits []byteconn *net.UDPConn) {
+
+}
+
 func RecvData (sessionID uint32, conn *net.UDPConn) {
 	total := 0
+	bits := bitmap.MakeBitmap (RESOURCE_START, RESOURCE_END)
+	reportTick := time.Now ()
 	for {
 		expire := time.Now ().Add (time.Millisecond * 100)
 		conn.SetReadDeadline (expire)
@@ -96,7 +104,12 @@ func RecvData (sessionID uint32, conn *net.UDPConn) {
 				log.Panic(err)
 			}
 			total += 1
+			bits.Setbit (pack.Data.Index, true)
 			log.Println ("Recv", total, pack.Data.Index)
+		}
+		if time.Millisecond * 500 < time.Since (reportTick)  {
+			reportTick = time.Now ()
+			SendReport (conn);
 		}
 	}
 }
@@ -106,7 +119,7 @@ func main() {
 	chanID,port := SendReqChan ()
 	conn, err := net.DialUDP("udp", 
 								&net.UDPAddr{IP: net.IPv4zero, Port: 0}, 
-								&net.UDPAddr{IP: net.ParseIP("127.0.0.1"), 
+								&net.UDPAddr{IP: net.ParseIP(SERVER_IP), 
 								Port: int(port)})
 	if err != nil {
 		log.Panic(err)

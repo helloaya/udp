@@ -29,9 +29,29 @@ func (b *Bitmap) Update(bits []byte) {
 	b.Bits = bits
 }
 
-func (b *Bitmap) Getbit(index uint32) bool {
+func (b *Bitmap) Get() []byte {
+	return b.Bits
+}
+
+func (b *Bitmap) Setbit(index uint32, isSet bool) bool {
 	if index < b.Start || index > b.End {
 		log.Printf ("Setbit failed, index %d out of range", index)
+		return false
+	}
+	l:= (index - b.Start)
+	i := l / 8
+	o := l % 8
+	if isSet {
+		b.Bits[i] = b.Bits[i] & (1 << o)
+	} else {
+		b.Bits[i] = b.Bits[i] &^ (1 << o)
+	}
+	return true
+}
+
+func (b *Bitmap) Getbit(index uint32) bool {
+	if index < b.Start || index > b.End {
+		log.Printf ("Getbit failed, index %d out of range", index)
 		return false
 	}
 	l:= (index - b.Start)

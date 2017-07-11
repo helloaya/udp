@@ -35,7 +35,7 @@ func sendPack(p* msg.Pack, conn *net.UDPConn, remote *net.UDPAddr) {
 		log.Panic(err)
 	}
 	conn.WriteTo (out, remote)
-	//log.Println ("Send", *p)
+	log.Println ("Send", *p)
 }
 
 
@@ -91,7 +91,7 @@ func sendData(c *Chan,  remote *net.UDPAddr) {
 	interval := time.Second / time.Duration(rate * 1024 / file.SIZE_PIECE) //估算发送包的间隔
 	index := c.Bitmap.Start
 
-	log.Printf ("Send Data: Rate=%d,Packs=%d, Interval=%d\n",
+	log.Printf ("Prepare: Rate=%d,Packs=%d, Interval=%d\n",
 			rate,packs,interval)
 	for 0 < packs {
 		p := &msg.Pack {}
