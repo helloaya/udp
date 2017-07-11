@@ -108,7 +108,7 @@ func displayPack(p *msg.Pack) {
 }
 
 func handlePack(c *Chan, p* msg.Pack, remote *net.UDPAddr, mgr *ChansManager) bool {
-	//displayPack (p)
+	displayPack (p)
 
 	/// 分发处理请求
 	switch p.Type {
