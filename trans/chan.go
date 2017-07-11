@@ -99,9 +99,7 @@ func handleReport(c *Chan, p *msg.Pack, remote *net.UDPAddr, mgr *ChansManager) 
 }
 
 
-
-
-func displayPack (p *msg.Pack) {
+func displayPack(p *msg.Pack) {
 	if p.Type == msg.Pack_REPORT {
 		log.Println ("Report, bits=", p.Report.Bitmap)
 	} else {

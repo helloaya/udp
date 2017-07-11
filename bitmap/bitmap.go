@@ -36,7 +36,7 @@ func (b *Bitmap) Get() []byte {
 func (b *Bitmap) IsComplete() bool {
 	i := b.Start
 	j := b.End
-	for i < j {
+	for i <= j {
 		if !b.Getbit(i) {
 			return false
 		}

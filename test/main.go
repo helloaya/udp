@@ -5,14 +5,19 @@ import (
 	"net"
 	"time"
 	"github.com/golang/protobuf/proto"
+	"crypto/md5"
+	"encoding/hex"
+	"io/ioutil"
 	"udp/msg"
 	"udp/bitmap"
+	"udp/file"
 )
 
 var (
 	RESOURCE_ID = "1496830040.ts"
 	RESOURCE_START uint32 = 0
 	RESOURCE_END  uint32 = 959
+	RESOURCE_LENGTH uint32 = 1342696
 	//SERVER_IP = "172.16.0.120"
 	SERVER_IP = "127.0.0.1"
 )
@@ -85,7 +90,7 @@ func Subcribe(chanID uint32, conn *net.UDPConn) uint32{
 	return subAck.SubcribeAck.SessionID
 }
 
-func SendReport (sessionID uint32, bits []byte, total uint32, last uint32,conn *net.UDPConn) {
+func SendReport(sessionID uint32, bits []byte, total uint32, last uint32,conn *net.UDPConn) {
 	report := &msg.Pack {}
 	report.Type = msg.Pack_REPORT
 	report.Report = &msg.Pack_Report {}
@@ -96,11 +101,16 @@ func SendReport (sessionID uint32, bits []byte, total uint32, last uint32,conn *
 	SendPack (report, conn)
 }
 
-func SendRelease (sessionID uint32, conn *net.UDPConn) {
-
+func SendRelease(chanID uint32, conn *net.UDPConn) {
+	report := &msg.Pack {}
+	report.Type = msg.Pack_RELEASE
+	report.Release = &msg.Pack_Release {}
+	report.Release.ChanID = chanID
+	SendPack (report, conn)
 }
 
 func RecvData (sessionID uint32, conn *net.UDPConn) {
+	data := make([]byte, RESOURCE_LENGTH)
 	total := 0
 	bits := bitmap.MakeBitmap (RESOURCE_START, RESOURCE_END)
 	reportTick := time.Now ()
@@ -122,15 +132,26 @@ func RecvData (sessionID uint32, conn *net.UDPConn) {
 			}
 			total += 1
 			bits.Setbit (pack.Data.Index, true)
+			copy (data[(pack.Data.Index - RESOURCE_START) * file.SIZE_PIECE:], pack.Data.Payload)
 			log.Println ("Recv", total, pack.Data.Index)
+			if pack.Data.Index == RESOURCE_END {
+				log.Println (pack.Data.Payload)
+			}
 		}
-		if time.Millisecond * 500 < time.Since (reportTick)  {
+		if time.Millisecond * 1000 < time.Since (reportTick)  {
 			reportTick = time.Now ()
 			SendReport (sessionID, bits.Get(), 0, 0, conn);
 		}
 
 		if bits.IsComplete () {
 			log.Println ("Recv data complete")
+
+		 	md5Ctx := md5.New()
+		    md5Ctx.Write(data)
+		    cipherStr := md5Ctx.Sum(nil)
+		    log.Println (hex.EncodeToString(cipherStr))
+
+		    ioutil.WriteFile ("recv.ts", data,0777)
 			break
 		}
 	}
@@ -149,7 +170,7 @@ func main() {
 	defer conn.Close()
 	sessionID := Subcribe (chanID, conn)
 	RecvData(sessionID, conn)
-	SendRelease(sessionID, conn)
+	SendRelease(chanID, conn)
 }
 
 
