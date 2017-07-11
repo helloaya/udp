@@ -90,11 +90,15 @@ func sendData(c *Chan,  remote *net.UDPAddr) {
 	packs := (rate * 1024 / file.SIZE_PIECE) * (duration / 1000)  //估算要发送多少包
 	interval := time.Second / time.Duration(rate * 1024 / file.SIZE_PIECE) //估算发送包的间隔
 	index := c.Bitmap.Start
+
+	log.Printf ("Send Data: Rate=%d,Packs=%d, Interval=%d\n",
+			rate,packs,interval)
 	for 0 < packs {
 		p := &msg.Pack {}
 		p.Type = msg.Pack_DATA
 		p.Data = &msg.Pack_Data {}
 		p.Data.SessionID = c.SessionID
+		p.Data.Index = index
 		p.Data.Payload = c.file.GetPiece (index)
 		sendPack (p, c.Conn, remote)
 		index += 1

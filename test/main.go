@@ -5,13 +5,13 @@ import (
 	"net"
 	"github.com/golang/protobuf/proto"
 	"udp/msg"
-	//"time"
+	"time"
 )
 
 var (
 	RESOURCE_ID = "1496830040.ts"
-	RESOURCE_START = 0
-	RESOURCE_END = 960
+	RESOURCE_START uint32 = 0
+	RESOURCE_END  uint32 = 960
 )
 
 func SendReqChan() (uint32, uint32){
@@ -22,8 +22,8 @@ func SendReqChan() (uint32, uint32){
 						Port: int(8888)})
 	defer conn.Close()
 
-	m := &msg.ReqChan {ClientID : 1024}
-	out,err := proto.Marshal (m)
+	req := &msg.ReqChan {ClientID : 1024}
+	out,err := proto.Marshal (req)
 	if nil != err {
 		log.Panic(err)
 	}
@@ -78,8 +78,26 @@ func Subcribe(chanID uint32, conn *net.UDPConn) uint32{
 }
 
 func RecvData (sessionID uint32, conn *net.UDPConn) {
+	total := 0
 	for {
-		
+		expire := time.Now ().Add (time.Millisecond * 100)
+		conn.SetReadDeadline (expire)
+
+		buffer := make([]byte, 1500)
+		n, _, err := conn.ReadFromUDP (buffer)
+		if nil != err {
+			nerr, ok := err.(net.Error)
+			if !ok || (ok && !nerr.Timeout ()) {
+				log.Panic (err)
+			}
+		} else {
+			pack := &msg.Pack {}
+			if err := proto.Unmarshal (buffer[:n], pack); nil != err {
+				log.Panic(err)
+			}
+			total += 1
+			log.Println ("Recv", total, pack.Data.Index)
+		}
 	}
 }
 
