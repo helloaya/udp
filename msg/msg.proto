@@ -14,10 +14,11 @@ message ReqChanAck {
 message Pack {
 	Type type = 1;
 	enum Type {
-		SUBCRIBE = 0;
-		SUBCRIBE_ACK = 1;
-		REPORT = 2;
-		BYE = 3;
+		DATA = 0;
+		SUBCRIBE = 1;
+		SUBCRIBE_ACK = 2;
+		REPORT = 3;
+		RELEASE = 4;
 	}
 	
 	Subcribe subcribe = 2;
@@ -40,7 +41,7 @@ message Pack {
 		uint32  SessionID = 1; 		//会话ID
 		uint32	TotalRecved = 2; 	//到目前为止收到的包
 		uint32	LastRecved	= 3;	//最近一秒收到的包
-		repeated uint64 Bitmap = 4; //标识接收情况的位图,  第N位为1,代表第N片已经收到
+		bytes Bitmap = 4; //标识接收情况的位图,  第N位为1,代表第N片已经收到
 	};
 
 	Release release = 5;
@@ -52,7 +53,7 @@ message Pack {
 	message Data {
 		uint32  SessionID = 1;	//会话ID
 		uint32	Index	  = 2;	//片段索引
-		bytes	Data	  = 3;	//负载,最大1400字节 
+		bytes	Payload	  = 3;	//负载,最大1400字节 
 	};
 };
 

@@ -3,17 +3,25 @@ package main
 import (
 	"log"
 	"udp/file"
+	"os"
+	"io/ioutil"
 )
 
 
 
 type  TSReader struct {}
 func (r *TSReader) Read(id string) (*file.File, error) {
-	if "ABCD" != id {
-		return nil, file.ERR_RES_NOT_EXIST
+	reader, err  := os.Open(id)
+	if nil != err {
+		return nil, err
+	}
+	defer reader.Close()
+
+	data,err := ioutil.ReadAll (reader)
+	if nil != err {
+		return nil,err
 	}
 
-	data := make([]byte, file.SIZE_PIECE * 1200) //TODO读取个什么文件?
 	f := file.MakeFile (id, data)
 	return f, nil
 }
