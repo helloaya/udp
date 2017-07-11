@@ -18,8 +18,9 @@ var (
 	RESOURCE_START uint32 = 0
 	RESOURCE_END  uint32 = 959
 	RESOURCE_LENGTH uint32 = 1342696
-	//SERVER_IP = "172.16.0.120"
-	SERVER_IP = "127.0.0.1"
+	SERVER_IP = "172.16.0.120"
+	//SERVER_IP = "127.0.0.1"
+	SEND_REPORT_INTERVAL = time.Millisecond * 1000
 )
 
 func SendReqChan() (uint32, uint32){
@@ -109,11 +110,13 @@ func SendRelease(chanID uint32, conn *net.UDPConn) {
 	SendPack (report, conn)
 }
 
-func RecvData (sessionID uint32, conn *net.UDPConn) {
+func RecvData(sessionID uint32, conn *net.UDPConn) {
 	data := make([]byte, RESOURCE_LENGTH)
 	total := 0
 	bits := bitmap.MakeBitmap (RESOURCE_START, RESOURCE_END)
 	reportTick := time.Now ()
+	totalRecv := 0
+	startTick := time.Now ()
 	for {
 		expire := time.Now ().Add (time.Millisecond * 100)
 		conn.SetReadDeadline (expire)
@@ -131,16 +134,22 @@ func RecvData (sessionID uint32, conn *net.UDPConn) {
 				log.Panic(err)
 			}
 			total += 1
-			bits.Setbit (pack.Data.Index, true)
-			copy (data[(pack.Data.Index - RESOURCE_START) * file.SIZE_PIECE:], pack.Data.Payload)
-			log.Println ("Recv", total, pack.Data.Index)
-			if pack.Data.Index == RESOURCE_END {
-				log.Println (pack.Data.Payload)
+			if bits.Getbit (pack.Data.Index) {
+				log.Println ("Recv repeat pack=", pack.Data.Index)
+			} else {
+				bits.Setbit (pack.Data.Index, true)
+				copy (data[(pack.Data.Index - RESOURCE_START) * file.SIZE_PIECE:], pack.Data.Payload)
+				totalRecv += len (pack.Data.Payload)
 			}
 		}
-		if time.Millisecond * 1000 < time.Since (reportTick)  {
+		if SEND_REPORT_INTERVAL < time.Since (reportTick)  {
 			reportTick = time.Now ()
 			SendReport (sessionID, bits.Get(), 0, 0, conn);
+			d := int(time.Since (startTick) / time.Millisecond)
+			if 0 < d {
+				rate := totalRecv / d
+				log.Println ("Rate=", rate, "KB/s")
+			}
 		}
 
 		if bits.IsComplete () {

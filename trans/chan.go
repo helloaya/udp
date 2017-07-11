@@ -12,7 +12,7 @@ import (
 )
 
 const PACK_RECV_MAXTIMEOUT = time.Second * 2
-const PACK_RECV_TIMEOUT  = time.Millisecond * 100 
+const PACK_RECV_TIMEOUT  = time.Millisecond * 10
 const STATUS_WAIT_REPORT  = 1
 const STATUS_WAIT_SUBSCRIBE  = 2
 
@@ -41,7 +41,7 @@ func sendPack(p* msg.Pack, conn *net.UDPConn, remote *net.UDPAddr) {
 	if p.Type != msg.Pack_DATA {
 		log.Println ("Send", *p)
 	} else {
-		log.Println ("Send Data, index=", p.Data.Index, *remote)
+		///log.Println ("Send Data, index=", p.Data.Index, *remote)
 	}
 }
 
@@ -108,7 +108,7 @@ func displayPack(p *msg.Pack) {
 }
 
 func handlePack(c *Chan, p* msg.Pack, remote *net.UDPAddr, mgr *ChansManager) bool {
-	displayPack (p)
+	//displayPack (p)
 
 	/// 分发处理请求
 	switch p.Type {
