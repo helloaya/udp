@@ -49,6 +49,8 @@ func (mgr *ChansManager) makeChan(clientID uint32) (*Chan, error){
 		c = &Chan {}
 		c.ChanID = rand.Uint32() ///TODO 随机数,可能会碰撞
 		c.ClientID = clientID
+		c.Status = STATUS_WAIT_SUBSCRIBE
+		c.SendIndex = 0
 		for {
 			c.Port = uint16(rand.Uint32() % 10000 + 10000) ///端口范围 10000 - 19999
 			conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: int(c.Port)})

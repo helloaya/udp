@@ -12,7 +12,7 @@ import (
 var (
 	RESOURCE_ID = "1496830040.ts"
 	RESOURCE_START uint32 = 0
-	RESOURCE_END  uint32 = 960
+	RESOURCE_END  uint32 = 959
 	//SERVER_IP = "172.16.0.120"
 	SERVER_IP = "127.0.0.1"
 )

@@ -33,7 +33,7 @@ func MakeFile(id string, data []byte) *File{
 
 func (file *File) GetPiece(index uint32) ([]byte) {
 	if index >= file.nPieces {
-		log.Panic ("Invalid index", file)
+		log.Panic ("Invalid index=", index, "nPieces=", file.nPieces)
 	}
 
 	var s  = index * SIZE_PIECE
@@ -43,5 +43,9 @@ func (file *File) GetPiece(index uint32) ([]byte) {
 		e = l
 	}
 	return file.data[s:e]
+}
+
+func (file *File) PiecesNum () uint32 {
+	return file.nPieces
 }
 
