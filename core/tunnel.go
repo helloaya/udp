@@ -16,7 +16,7 @@ const RATE_INIT					= 80 //初始80KB/s
 const RATE_MIN					= 30 //最低30KB/s
 const RATE_INC_STEP				= 20 //每次增长20KB
 const RATE_DEC_STEP				= 10 //每次降低10KB
-const RATE_THRESHOLD			= 90		
+const RATE_THRESHOLD			= 50		
 
 type Tunnel struct {
 	TunnelID uint32
