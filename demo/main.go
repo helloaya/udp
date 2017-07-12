@@ -2,15 +2,16 @@ package main
 
 import (
 	"log"
-	"udp/file"
 	"os"
 	"io/ioutil"
+	"udp/file"
+	"udp/core"
 )
 
 
 
-type  TSReader struct {}
-func (r *TSReader) Read(id string) (*file.File, error) {
+type  DemoReader struct {}
+func (r *DemoReader) Read(id string) (*file.File, error) {
 	reader, err  := os.Open(id)
 	if nil != err {
 		return nil, err
@@ -28,8 +29,8 @@ func (r *TSReader) Read(id string) (*file.File, error) {
 
 
 func main() {
-	r := &TSReader{}
-	mgr,err := MakeChansManager (8888, r)
+	r := &DemoReader{}
+	mgr,err := core.MakeTunnelManager (8888, r)
 	if nil != err {
 		log.Panic (err)
 	}

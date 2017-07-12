@@ -21,6 +21,7 @@ var (
 	//SERVER_IP = "172.16.0.120"
 	SERVER_IP = "127.0.0.1"
 	//SERVER_IP = "142.234.27.42"
+	//SERVER_IP = "147.255.237.34"
 	SEND_REPORT_INTERVAL = time.Millisecond * 1000
 )
 
@@ -31,7 +32,7 @@ func SendReqChan() (uint32, uint32){
 						Port: int(8888)})
 	defer conn.Close()
 
-	req := &msg.ReqChan {ClientID : 1024}
+	req := &msg.ReqTunnel {ClientID : 1024}
 	out,err := proto.Marshal (req)
 	if nil != err {
 		log.Panic(err)
@@ -43,11 +44,11 @@ func SendReqChan() (uint32, uint32){
 		log.Panic(err)
 	}
 
-	resp := &msg.ReqChanAck {}
+	resp := &msg.ReqTunnelAck {}
 	if err := proto.Unmarshal (buffer[:n], resp); nil != err {
 		log.Panic(err)
 	}
-	return resp.ChanID, resp.ChanPort
+	return resp.TunnelID, resp.TunnelPort
 }
 
 func displayPack (p *msg.Pack) {
@@ -72,7 +73,7 @@ func Subcribe(chanID uint32, conn *net.UDPConn) uint32{
 	sub  := &msg.Pack {}
 	sub.Type = msg.Pack_SUBCRIBE
 	sub.Subcribe = &msg.Pack_Subcribe {}
-	sub.Subcribe.ChanID = chanID
+	sub.Subcribe.TunnelID = chanID
 	sub.Subcribe.ResouceID = RESOURCE_ID
 	sub.Subcribe.Start = RESOURCE_START
 	sub.Subcribe.End = RESOURCE_END
@@ -92,13 +93,12 @@ func Subcribe(chanID uint32, conn *net.UDPConn) uint32{
 	return subAck.SubcribeAck.SessionID
 }
 
-func SendReport(sessionID uint32, bits []byte, total uint32, last uint32,conn *net.UDPConn) {
+func SendReport(sessionID uint32, bits []byte, rate uint32,conn *net.UDPConn) {
 	report := &msg.Pack {}
 	report.Type = msg.Pack_REPORT
 	report.Report = &msg.Pack_Report {}
 	report.Report.SessionID = sessionID
-	report.Report.TotalRecved = total
-	report.Report.LastRecved = last
+	report.Report.Rate = rate //TODO,写死100KB
 	report.Report.Bitmap = bits
 	SendPack (report, conn)
 }
@@ -107,7 +107,7 @@ func SendRelease(chanID uint32, conn *net.UDPConn) {
 	report := &msg.Pack {}
 	report.Type = msg.Pack_RELEASE
 	report.Release = &msg.Pack_Release {}
-	report.Release.ChanID = chanID
+	report.Release.TunnelID = chanID
 	SendPack (report, conn)
 }
 
@@ -145,12 +145,14 @@ func RecvData(sessionID uint32, conn *net.UDPConn) {
 		}
 		if SEND_REPORT_INTERVAL < time.Since (reportTick)  {
 			reportTick = time.Now ()
-			SendReport (sessionID, bits.Get(), 0, 0, conn);
+			rate := 0
 			d := int(time.Since (startTick) / time.Millisecond)
 			if 0 < d {
-				rate := totalRecv / d
+				rate = totalRecv / d
 				log.Println ("Rate=", rate, "KB/s")
 			}
+			SendReport (sessionID, bits.Get(), uint32(rate),  conn);
+
 		}
 
 		if bits.IsComplete () {

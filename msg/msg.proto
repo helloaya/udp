@@ -1,14 +1,14 @@
 syntax = "proto3";
 package msg;
 
-message ReqChan {
+message ReqTunnel {
 	uint32 ClientID = 1; 
 }
 
-message ReqChanAck {
+message ReqTunnelAck {
 	uint32 ClientID = 1;
-	uint32 ChanID = 2;		//通道ID
-	uint32 ChanPort = 3;	//通道端口
+	uint32 TunnelID = 2;	//通道ID
+	uint32 TunnelPort = 3;	//通道端口
 }
 
 message Pack {
@@ -23,7 +23,7 @@ message Pack {
 	
 	Subcribe subcribe = 2;
 	message Subcribe {
-		uint32 ChanID 	  = 1;  //通道ID, 从ReqChanAck获取
+		uint32 TunnelID   = 1;  //通道ID, 从ReqChanAck获取
 		string ResouceID  = 2;  //资源ID
 		uint32 Start	  = 3;  //订阅的起始片段, 0起始
 		uint32 End		  = 4;  //订阅的结束片段
@@ -40,13 +40,13 @@ message Pack {
 	message Report {
 		uint32  SessionID = 1; 		//会话ID
 		uint32	TotalRecved = 2; 	//到目前为止收到的包
-		uint32	LastRecved	= 3;	//最近一秒收到的包
+		uint32	Rate = 3;			//接受速率,单位KB/s
 		bytes Bitmap = 4; //标识接收情况的位图,  第N片已经收到, 则第 (N-Start)位置为1,反正为0
 	};
 
 	Release release = 5;
 	message Release {
-		uint32  ChanID = 1;	//通道ID
+		uint32  TunnelID = 1;	//通道ID
 	};
 
 	Data data = 6;
