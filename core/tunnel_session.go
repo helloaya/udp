@@ -15,6 +15,7 @@ const DEFAULT_SEND_INTERVAL  = time.Millisecond * 10
 const SEND_INTERVAL_INC_STEP = time.Millisecond
 const SEND_INTERVAL_DEC_STEP = time.Millisecond * 2
 const MIN_SEND_INTERVAL		 = time.Millisecond
+const MAX_SEND_INTERVAL		 = time.Millisecond * 20
 const MAX_LOSS_RATIO		 = 30
 const INIT_LAST_SENT		 = ^uint32(0)
 
@@ -83,6 +84,10 @@ func (session *TunnelSession) update(report *msg.Pack_Report) {
 			if 0 >= session.SendInterval {
 				session.SendInterval = MIN_SEND_INTERVAL
 			}
+
+			if MAX_SEND_INTERVAL < session.SendInterval {
+				session.SendInterval = MAX_SEND_INTERVAL
+			}
 			//log.Println ("SendInterval =", session.SendInterval, " Ratio=", ratio)
 		}
 		log.Printf("Session[%d] Packs[%d] Bytes[%d] Rate[%d KB/s] Interval[%s] Loss[%d]\n",
@@ -121,7 +126,3 @@ func (session *TunnelSession) getNextPack() (uint32,[]byte, bool) {
 	}
 	return index, payload, got
 }
-
-
-
-
