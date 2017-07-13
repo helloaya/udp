@@ -19,11 +19,11 @@ var (
 	RESOURCE_START uint32 = 0
 	RESOURCE_END  uint32 = 959
 	RESOURCE_LENGTH uint32 = 1342696
-	//SERVER_IP = "172.16.0.120"
-	SERVER_IP = "127.0.0.1"
+	SERVER_IP = "172.16.0.120"
+	//SERVER_IP = "127.0.0.1"
 	//SERVER_IP = "142.234.27.42"
 	//SERVER_IP = "147.255.237.34"
-	SEND_REPORT_INTERVAL = time.Millisecond * 1000
+	SEND_REPORT_INTERVAL = time.Millisecond * 500
 )
 
 func SendReqChan() (uint32, uint32){
