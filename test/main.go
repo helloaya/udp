@@ -19,10 +19,10 @@ var (
 	RESOURCE_START uint32 = 0
 	RESOURCE_END  uint32 = 959
 	RESOURCE_LENGTH uint32 = 1342696
-	SERVER_IP = "172.16.0.120"
+	//SERVER_IP = "172.16.0.120"
 	//SERVER_IP = "127.0.0.1"
 	//SERVER_IP = "142.234.27.42"
-	//SERVER_IP = "147.255.237.34"
+	SERVER_IP = "147.255.237.34"
 	SEND_REPORT_INTERVAL = time.Millisecond * 500
 )
 
@@ -31,25 +31,37 @@ func SendReqChan() (uint32, uint32){
 						&net.UDPAddr{IP: net.IPv4zero, Port: 0}, 
 						&net.UDPAddr{IP: net.ParseIP(SERVER_IP),
 						Port: int(8888)})
+	if nil != err {
+		log.Panic (err)
+	}
 	defer conn.Close()
-
-	req := &msg.ReqTunnel {ClientID : rand.Uint32()}
-	out,err := proto.Marshal (req)
-	if nil != err {
-		log.Panic(err)
+	clientID := rand.Uint32()
+	for {
+		req := &msg.ReqTunnel {ClientID : clientID}
+		out,err := proto.Marshal (req)
+		if nil != err {
+			log.Panic(err)
+		}
+		conn.Write (out)
+		buffer := make([]byte, 1500)
+		log.Println ("Sent", req)
+		conn.SetReadDeadline (time.Now ().Add (time.Second))
+		n, err := conn.Read (buffer)
+		if nil != err {
+			nerr, ok := err.(net.Error)
+			if !ok || (ok && !nerr.Timeout ()) {
+				///其他错误,退出程序
+				log.Panic (err)
+			}
+		} else {
+			resp := &msg.ReqTunnelAck {}
+			if err := proto.Unmarshal (buffer[:n], resp); nil != err {
+				log.Panic(err)
+			}
+			log.Println ("Recv", resp)
+			return resp.TunnelID, resp.TunnelPort
+		}
 	}
-	conn.Write (out)
-	buffer := make([]byte, 1500)
-	n, err := conn.Read (buffer)
-	if nil != err {
-		log.Panic(err)
-	}
-
-	resp := &msg.ReqTunnelAck {}
-	if err := proto.Unmarshal (buffer[:n], resp); nil != err {
-		log.Panic(err)
-	}
-	return resp.TunnelID, resp.TunnelPort
 }
 
 func displayPack (p *msg.Pack) {
@@ -69,28 +81,38 @@ func SendPack(p* msg.Pack, conn *net.UDPConn) {
 func Subcribe(chanID uint32, conn *net.UDPConn) uint32{
 	log.Printf("Subcribe chanID=%dn",chanID)
 
-	/// 发送Subcribe
-	sub  := &msg.Pack {}
-	sub.Type = msg.Pack_SUBCRIBE
-	sub.Subcribe = &msg.Pack_Subcribe {}
-	sub.Subcribe.TunnelID = chanID
-	sub.Subcribe.ResouceID = RESOURCE_ID
-	sub.Subcribe.Start = RESOURCE_START
-	sub.Subcribe.End = RESOURCE_END
-	SendPack (sub, conn)
+	for {
+		/// 发送Subcribe
+		sub  := &msg.Pack {}
+		sub.Type = msg.Pack_SUBCRIBE
+		sub.Subcribe = &msg.Pack_Subcribe {}
+		sub.Subcribe.TunnelID = chanID
+		sub.Subcribe.ResouceID = RESOURCE_ID
+		sub.Subcribe.Start = RESOURCE_START
+		sub.Subcribe.End = RESOURCE_END
+		SendPack (sub, conn)
 
-	/// 等待SubscribeAck
-	buffer := make([]byte, 1500)
-	n, err := conn.Read (buffer)
-	if nil != err {
-		log.Panic(err)
+		/// 等待SubscribeAck
+		buffer := make([]byte, 1500)
+		conn.SetReadDeadline (time.Now().Add (time.Second))
+		n, err := conn.Read (buffer)
+		if nil != err {
+			nerr, ok := err.(net.Error)
+			if !ok || (ok && !nerr.Timeout ()) {
+				///其他错误,退出程序
+				log.Panic (err)
+			}
+		} else {
+			subAck := &msg.Pack {}
+			if err := proto.Unmarshal (buffer[:n], subAck); nil != err {
+				log.Panic(err)
+			}
+			if subAck.Type == msg.Pack_SUBCRIBE_ACK {
+				log.Println ("Recv", subAck)
+				return subAck.SubcribeAck.SessionID
+			}
+		}
 	}
-	subAck := &msg.Pack {}
-	if err := proto.Unmarshal (buffer[:n], subAck); nil != err {
-		log.Panic(err)
-	}
-	log.Println ("Recv", subAck)
-	return subAck.SubcribeAck.SessionID
 }
 
 func SendReport(sessionID uint32, bits []byte, rate uint32, totalPacks uint32, conn *net.UDPConn) {
@@ -139,13 +161,15 @@ func RecvData(sessionID uint32, conn *net.UDPConn) {
 			if err := proto.Unmarshal (buffer[:n], pack); nil != err {
 				log.Panic(err)
 			}
-			totalPacks += 1
-			if bits.Getbit (pack.Data.Index) {
-				log.Println ("Recv repeat pack=", pack.Data.Index)
-			} else {
-				bits.Setbit (pack.Data.Index, true)
-				copy (data[(pack.Data.Index - RESOURCE_START) * file.SIZE_PIECE:], pack.Data.Payload)
-				totalRecv += len (pack.Data.Payload)
+			if pack.Type == msg.Pack_DATA {
+				if bits.Getbit (pack.Data.Index) {
+					log.Println ("Recv repeat pack=", pack.Data.Index)
+				} else {
+					bits.Setbit (pack.Data.Index, true)
+					copy (data[(pack.Data.Index - RESOURCE_START) * file.SIZE_PIECE:], pack.Data.Payload)
+					totalRecv += len (pack.Data.Payload)
+					totalPacks += 1
+				}
 			}
 		}
 		if SEND_REPORT_INTERVAL < time.Since (reportTick)  {

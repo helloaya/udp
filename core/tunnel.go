@@ -191,8 +191,9 @@ func (tunnel *Tunnel) Run(mgr *TunnelManager) {
 		if nil != err {
 			nerr, ok := err.(net.Error)
 			if !ok || (ok && !nerr.Timeout ()) {
-				///其他错误,退出程序
-				log.Panic (err)
+				///其他错误,退出Tunnel
+				log.Println (err)
+				break
 			}
 			///接收超时,释放Channel
 			if PACK_RECV_MAXTIMEOUT < time.Since(timeout) {
