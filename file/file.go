@@ -13,7 +13,7 @@ var (
 )
 
 type File struct {
-	Id string
+	ID string
 	nPieces uint32
 	data []byte
 }
@@ -25,7 +25,7 @@ type Reader interface {
 
 func MakeFile(id string, data []byte) *File{
 	f := &File{}
-	f.Id = id
+	f.ID = id
 	f.nPieces = (uint32(len(data)) + SIZE_PIECE - 1)/SIZE_PIECE
 	f.data = data
 	return f
@@ -45,7 +45,7 @@ func (file *File) GetPiece(index uint32) ([]byte) {
 	return file.data[s:e]
 }
 
-func (file *File) PiecesNum () uint32 {
+func (file *File) PiecesNum() uint32 {
 	return file.nPieces
 }
 

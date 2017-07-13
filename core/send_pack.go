@@ -36,19 +36,37 @@ func sendPack(p* msg.Pack, conn *net.UDPConn, remote *net.UDPAddr) {
 		log.Println ("Send", *p)
 	}
 	// else {
+	// TODO LOG等级
 	//	log.Println ("Send DATA", p.Data.Index)
 	//}
 }
 
-
-func sendSubcribeAck(tunnel *Tunnel, resourceID string) {
+func sendSubcribeAck(tunnel *Tunnel) {
 	subAck := &msg.Pack {
 		Type : msg.Pack_SUBCRIBE_ACK,
 		SubcribeAck : &msg.Pack_SubcribeAck {
-			ResouceID : resourceID,
-			SessionID : tunnel.SessionID,
+			ResouceID : tunnel.Session.getResourceID(),
+			SessionID : tunnel.Session.ID,
 			IsAccepted : true,
 		},
 	}
-	sendPack (subAck, tunnel.Conn, tunnel.Remote)
+	sendPack (subAck, tunnel.Conn, tunnel.Session.ClientAddr)
 }
+
+func sendData(tunnel *Tunnel) {
+	if nil != tunnel.Session {
+		///寻找下一个待发送的Data包
+		if index, payload, ok := tunnel.Session.getNextPack (); ok {
+			pack := &msg.Pack {
+				Type : msg.Pack_DATA,
+				Data :  &msg.Pack_Data {
+					SessionID : tunnel.Session.ID,
+					Index 	  : index,
+					Payload   : payload,
+				},
+			}
+			sendPack (pack, tunnel.Conn, tunnel.Session.ClientAddr)
+		}
+	}
+}
+

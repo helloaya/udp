@@ -5,188 +5,99 @@ import (
 	"net"
 	"time"
 	"udp/msg"
-	"udp/file"
-	"udp/bitmap"
-	"math/rand"
 	"github.com/golang/protobuf/proto"
 )
 
-const PACK_RECV_MAXTIMEOUT 		= time.Second * 10
-const RATE_INIT					= 80 //初始80KB/s
-const RATE_MIN					= 30 //最低30KB/s
-const RATE_INC_STEP				= 20 //每次增长20KB
-const RATE_DEC_STEP				= 10 //每次降低10KB
-const RATE_THRESHOLD			= 70		
+const PACK_RECV_MAXTIMEOUT 	= time.Second * 10
+
+
+
+
 
 type Tunnel struct {
 	TunnelID uint32
 	ClientID uint32
 	Conn *net.UDPConn
-	SendIndex uint32
-	Remote *net.UDPAddr
-	SessionID uint32
-	Bitmap *bitmap.Bitmap
-	File *file.File
-	SentPacks uint32
-	Rate uint32 				//发送速率
-	SentInterval time.Duration	//发送间隔
+	Session *TunnelSession
 }
 
 
-func handleSubscribe(tunnel *Tunnel, p *msg.Pack, remote *net.UDPAddr, mgr *TunnelManager) {
-	if nil == p.Subcribe || p.Subcribe.TunnelID != tunnel.TunnelID {
+func handleSubscribe(tunnel *Tunnel, p *msg.Pack, clientAddr *net.UDPAddr, mgr *TunnelManager) {
+	sub := p.Subcribe
+	if nil == sub || sub.TunnelID != tunnel.TunnelID {
 		log.Println ("Invalid Subcribe", *p)
 		return
 	}
-
-	if nil == tunnel.File {
-		newFile, err := mgr.reader.Read (p.Subcribe.ResouceID)
-		if nil != err {
-			/// 获取资源失败,忽略请求
-			/// TODO 要拒绝
-			log.Println (err)
+	/// 创建新Session
+	if nil == tunnel.Session || tunnel.Session.getResourceID() != sub.ResouceID {
+		tunnel.Session = makeTunnelSession (sub,  mgr.reader, clientAddr)
+		if nil == tunnel.Session {
+			///TO DO创建Session失败,拒绝
 			return
 		}
-		if newFile.PiecesNum () <= p.Subcribe.End || p.Subcribe.Start > p.Subcribe.End {
-			/// 无效访问,忽略请求
-			/// TODO 要拒绝
-			log.Printf ("Invalid Subscribe, invalid range[%d-%d]\n", p.Subcribe.Start,p.Subcribe.End)
-			return
-		}
-		tunnel.File = newFile
-		tunnel.SessionID = rand.Uint32()
-		tunnel.Bitmap = bitmap.MakeBitmap(p.Subcribe.Start, p.Subcribe.End)
-		tunnel.SendIndex  = p.Subcribe.Start
-		tunnel.Remote = remote
-		tunnel.SentPacks = 0
 	}
-
-	if tunnel.File.Id != p.Subcribe.ResouceID {
-		///TODO 中止原来的session, 开启新Session
-	}
-
 	/// 响应SubcribeAck
-	sendSubcribeAck(tunnel, p.Subcribe.ResouceID)
+	sendSubcribeAck(tunnel)
 }
 
 
-func handleReport(tunnel *Tunnel, p *msg.Pack, remote *net.UDPAddr, mgr *TunnelManager) bool {
-	if nil == p.Report || nil == p.Report.Bitmap || tunnel.SessionID != p.Report.SessionID {
+func handleReport(tunnel *Tunnel, p *msg.Pack, mgr *TunnelManager) {
+	if nil == tunnel.Session {
+		log.Println ("Invalid report, Session not set up")
+		return
+	}
+
+	report := p.Report
+	if nil == report || nil == report.Bitmap || tunnel.Session.ID != report.SessionID {
 		log.Println ("Invalid Report", *p)
-		return false
+		return
 	}
-
-	if nil == tunnel.Bitmap || nil == tunnel.Remote {
-		log.Println ("Invalid Report, Tunnel Incomplete")
-		return false
-	}
-
-	tunnel.Bitmap.Update (p.Report.Bitmap)
-
-
-	/*
-		1. 初始80KB
-		2. 如果接收/发送速率比 < 0.7, 则降低10KB,最低30KB
-		3. 如果接收/发送速率比 > 0.7, 则提高20KB
-	*/
-	
-	/*
-	ratio := p.Report.Rate * 100 / tunnel.Rate
-	if RATE_THRESHOLD > ratio {
-		tunnel.Rate -= RATE_DEC_STEP
-		log.Println ("Decrease Rate = ", tunnel.Rate, " Ratio=", ratio)
-	} else {
-		tunnel.Rate += RATE_INC_STEP
-		log.Println ("Increase Rate = ", tunnel.Rate, " Ratio=", ratio)
-	}
-	if RATE_MIN > tunnel.Rate {
-		tunnel.Rate = RATE_MIN
-	}
-	*/
-	if 0 < tunnel.SentPacks {
-		ratio := p.Report.RecvedPacks * 100 / tunnel.SentPacks
-		if RATE_THRESHOLD > ratio {
-			//tunnel.Rate -= RATE_DEC_STEP
-			tunnel.SentInterval += time.Millisecond
-			log.Println ("SentInterval = ", tunnel.SentInterval, " Ratio=", ratio)
-		} else {
-			//tunnel.Rate += RATE_INC_STEP
-			tunnel.SentInterval -= time.Millisecond * 2
-			if time.Millisecond > tunnel.SentInterval {
-				tunnel.SentInterval = time.Millisecond
-			}
-			log.Println ("SentInterval =", tunnel.SentInterval, " Ratio=", ratio)
-		}
-		if RATE_MIN > tunnel.Rate {
-			tunnel.Rate = RATE_MIN
-		}
-	}
-	return true
+	// 更新客户端接收记录,调整发送间隔
+	tunnel.Session.update (report)
 }
 
-func handlePack(tunnel *Tunnel, p* msg.Pack, remote *net.UDPAddr, mgr *TunnelManager) bool {
-	log.Println ("Recv",*p)
+func handlePack(tunnel *Tunnel, pack* msg.Pack, clientAddr *net.UDPAddr, mgr *TunnelManager) bool {
+	log.Println ("Recv",*pack)
 	/// 分发处理请求
-	switch p.Type {
+	switch pack.Type {
 	case msg.Pack_SUBCRIBE:
-		handleSubscribe (tunnel, p, remote, mgr)
+		handleSubscribe (tunnel, pack, clientAddr, mgr)
 	case msg.Pack_REPORT:
-		handleReport (tunnel, p, remote, mgr)
+		handleReport (tunnel, pack, mgr)
 	case msg.Pack_RELEASE:
-		if p.Release.TunnelID == tunnel.TunnelID {
+		if nil != pack.Release && pack.Release.TunnelID == tunnel.TunnelID {
 			///结束通道
-			log.Println ("Release Channel=",tunnel.TunnelID)
+			log.Println ("Release Tunnel =",tunnel.TunnelID)
 			return false
 		}
 	default:
-		log.Println ("Strange Pack", p.Type)
+		log.Println ("Strange Pack", *pack)
 	}
 	return true
 }
 
-func sendData(tunnel *Tunnel) {
-	if nil != tunnel.Remote {
-		sent := false
-		for !sent {
-			if !tunnel.Bitmap.Getbit(tunnel.SendIndex) {
-				p := &msg.Pack {
-					Type : msg.Pack_DATA,
-					Data :  &msg.Pack_Data {
-						SessionID : tunnel.SessionID,
-						Index : tunnel.SendIndex,
-						Payload : tunnel.File.GetPiece (tunnel.SendIndex),
-					},
-				}
-				tunnel.Bitmap.Setbit(tunnel.SendIndex, true)
-				tunnel.SentPacks += 1
-				sendPack (p, tunnel.Conn, tunnel.Remote)
-				sent = true
-			}
-			tunnel.SendIndex += 1
-			if tunnel.SendIndex > tunnel.Bitmap.End {
-				tunnel.SendIndex = tunnel.Bitmap.Start
-				break
-			}
-		}
+
+func setReadTimeout(tunnel *Tunnel) {
+	var expire time.Time
+	if nil != tunnel.Session {
+		expire = time.Now ().Add(tunnel.Session.SendInterval)
+	} else {
+		expire = time.Now ().Add(time.Millisecond * 10)
 	}
-}
-
-
-func adjustRecvTimeout (tunnel *Tunnel) {
-	//timeout := time.Second * time.Duration(file.SIZE_PIECE) / time.Duration(tunnel.Rate * 1024)
-	expire := time.Now ().Add (tunnel.SentInterval)
 	tunnel.Conn.SetReadDeadline (expire)
 }
 
+
+/// 收收收,发发发
 func (tunnel *Tunnel) Run(mgr *TunnelManager) {
 	log.Printf ("Tunnel[%d] Running\n",tunnel.TunnelID)
 	defer tunnel.Conn.Close ()
 
 	timeout := time.Now()
-	buffer := make([]byte, 1500)
+	buffer := make([]byte, 1500) //TODO,固定1500字节接收缓冲是否妥?
 	for {
-		/// 计算读取超时,用于控制发送速率
-		adjustRecvTimeout (tunnel)
+		/// 调整读取超时,用于控制发送速率
+		setReadTimeout (tunnel)
 		n, remote, err := tunnel.Conn.ReadFromUDP (buffer)
 		if nil != err {
 			nerr, ok := err.(net.Error)
@@ -195,7 +106,7 @@ func (tunnel *Tunnel) Run(mgr *TunnelManager) {
 				log.Println (err)
 				break
 			}
-			///接收超时,释放Channel
+			///接收超时,释放Tunnel
 			if PACK_RECV_MAXTIMEOUT < time.Since(timeout) {
 				log.Printf ("Tunnel[%d] Timeout, Exit\n", tunnel.TunnelID)
 				break
