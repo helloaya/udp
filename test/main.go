@@ -53,7 +53,7 @@ func SendReqChan() (uint32, uint32){
 }
 
 func displayPack (p *msg.Pack) {
-	log.Println ("Send ", *p)
+	log.Println ("Send  ", *p)
 }
 
 func SendPack(p* msg.Pack, conn *net.UDPConn) {
@@ -61,6 +61,7 @@ func SendPack(p* msg.Pack, conn *net.UDPConn) {
 	if nil != err {
 		log.Panic(err)
 	}
+
 	conn.Write (out)
 	displayPack(p)
 }

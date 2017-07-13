@@ -115,7 +115,7 @@ func handleReport(tunnel *Tunnel, p *msg.Pack, remote *net.UDPAddr, mgr *TunnelM
 			if time.Millisecond > tunnel.SentInterval {
 				tunnel.SentInterval = time.Millisecond
 			}
-			log.Println ("SentInterval = ", tunnel.SentInterval, " Ratio=", ratio)
+			log.Println ("SentInterval =", tunnel.SentInterval, " Ratio=", ratio)
 		}
 		if RATE_MIN > tunnel.Rate {
 			tunnel.Rate = RATE_MIN
