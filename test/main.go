@@ -6,8 +6,9 @@ import (
 	"time"
 	"github.com/golang/protobuf/proto"
 	"crypto/md5"
+	"math/rand"
 	"encoding/hex"
-	"io/ioutil"
+	//"io/ioutil"
 	"udp/msg"
 	"udp/bitmap"
 	"udp/file"
@@ -32,7 +33,7 @@ func SendReqChan() (uint32, uint32){
 						Port: int(8888)})
 	defer conn.Close()
 
-	req := &msg.ReqTunnel {ClientID : 1024}
+	req := &msg.ReqTunnel {ClientID : rand.Uint32()}
 	out,err := proto.Marshal (req)
 	if nil != err {
 		log.Panic(err)
@@ -52,9 +53,7 @@ func SendReqChan() (uint32, uint32){
 }
 
 func displayPack (p *msg.Pack) {
-	if p.Type == msg.Pack_REPORT {
-		log.Println ("Report, bits=", p.Report.Bitmap)
-	}
+	log.Println ("Send ", *p)
 }
 
 func SendPack(p* msg.Pack, conn *net.UDPConn) {
@@ -93,13 +92,17 @@ func Subcribe(chanID uint32, conn *net.UDPConn) uint32{
 	return subAck.SubcribeAck.SessionID
 }
 
-func SendReport(sessionID uint32, bits []byte, rate uint32,conn *net.UDPConn) {
-	report := &msg.Pack {}
-	report.Type = msg.Pack_REPORT
-	report.Report = &msg.Pack_Report {}
-	report.Report.SessionID = sessionID
-	report.Report.Rate = rate //TODO,写死100KB
-	report.Report.Bitmap = bits
+func SendReport(sessionID uint32, bits []byte, rate uint32, totalPacks uint32, conn *net.UDPConn) {
+	report := &msg.Pack {
+		Type : msg.Pack_REPORT,
+		Report : &msg.Pack_Report {
+				SessionID : sessionID,
+				Rate : rate,
+				RecvedPacks : totalPacks,
+				Bitmap : bits,
+			},
+	}
+
 	SendPack (report, conn)
 }
 
@@ -109,14 +112,15 @@ func SendRelease(chanID uint32, conn *net.UDPConn) {
 	report.Release = &msg.Pack_Release {}
 	report.Release.TunnelID = chanID
 	SendPack (report, conn)
+	time.Sleep (time.Second)
 }
 
 func RecvData(sessionID uint32, conn *net.UDPConn) {
 	data := make([]byte, RESOURCE_LENGTH)
-	total := 0
 	bits := bitmap.MakeBitmap (RESOURCE_START, RESOURCE_END)
 	reportTick := time.Now ()
 	totalRecv := 0
+	totalPacks := 0
 	startTick := time.Now ()
 	for {
 		expire := time.Now ().Add (time.Millisecond * 100)
@@ -134,7 +138,7 @@ func RecvData(sessionID uint32, conn *net.UDPConn) {
 			if err := proto.Unmarshal (buffer[:n], pack); nil != err {
 				log.Panic(err)
 			}
-			total += 1
+			totalPacks += 1
 			if bits.Getbit (pack.Data.Index) {
 				log.Println ("Recv repeat pack=", pack.Data.Index)
 			} else {
@@ -151,8 +155,7 @@ func RecvData(sessionID uint32, conn *net.UDPConn) {
 				rate = totalRecv / d
 				log.Println ("Rate=", rate, "KB/s")
 			}
-			SendReport (sessionID, bits.Get(), uint32(rate),  conn);
-
+			SendReport (sessionID, bits.Get(), uint32(rate),  uint32(totalPacks), conn);
 		}
 
 		if bits.IsComplete () {
@@ -163,7 +166,7 @@ func RecvData(sessionID uint32, conn *net.UDPConn) {
 		    cipherStr := md5Ctx.Sum(nil)
 		    log.Println (hex.EncodeToString(cipherStr))
 
-		    ioutil.WriteFile ("recv.ts", data,0777)
+		    ///ioutil.WriteFile ("recv.ts", data,0777)
 			break
 		}
 	}
@@ -171,6 +174,7 @@ func RecvData(sessionID uint32, conn *net.UDPConn) {
 
 
 func main() {
+	rand.Seed (int64(time.Now ().Nanosecond()))
 	chanID,port := SendReqChan ()
 	conn, err := net.DialUDP("udp", 
 								&net.UDPAddr{IP: net.IPv4zero, Port: 0}, 

@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 	"udp/msg"
 	"udp/file"
 	"math/rand"
@@ -76,6 +77,8 @@ func (mgr *TunnelManager) add(clientID uint32) (*Tunnel, error){
 			SendIndex : 0,
 			Conn : conn,
 			Rate : RATE_INIT,
+			SentPacks : 0,
+			SentInterval : time.Millisecond * 14,
 		}
 		mgr.tunnels[clientID] = tunnel
 		log.Println ("Add Tunnel,Port="," ClientID=", clientID)

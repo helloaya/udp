@@ -41,7 +41,8 @@ message Pack {
 		uint32  SessionID = 1; 		//会话ID
 		uint32	TotalRecved = 2; 	//到目前为止收到的包
 		uint32	Rate = 3;			//接受速率,单位KB/s
-		bytes Bitmap = 4; //标识接收情况的位图,  第N片已经收到, 则第 (N-Start)位置为1,反正为0
+		uint32  RecvedPacks = 4;	//总共接收到包
+		bytes 	Bitmap = 5; 		//标识接收情况的位图,  第N片已经收到, 则第 (N-Start)位置为1,反正为0
 	};
 
 	Release release = 5;

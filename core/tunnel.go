@@ -16,7 +16,7 @@ const RATE_INIT					= 80 //初始80KB/s
 const RATE_MIN					= 30 //最低30KB/s
 const RATE_INC_STEP				= 20 //每次增长20KB
 const RATE_DEC_STEP				= 10 //每次降低10KB
-const RATE_THRESHOLD			= 50		
+const RATE_THRESHOLD			= 70		
 
 type Tunnel struct {
 	TunnelID uint32
@@ -26,8 +26,10 @@ type Tunnel struct {
 	Remote *net.UDPAddr
 	SessionID uint32
 	Bitmap *bitmap.Bitmap
-	File *file.File 
-	Rate uint32 //发送速率
+	File *file.File
+	SentPacks uint32
+	Rate uint32 				//发送速率
+	SentInterval time.Duration	//发送间隔
 }
 
 
@@ -56,6 +58,7 @@ func handleSubscribe(tunnel *Tunnel, p *msg.Pack, remote *net.UDPAddr, mgr *Tunn
 		tunnel.Bitmap = bitmap.MakeBitmap(p.Subcribe.Start, p.Subcribe.End)
 		tunnel.SendIndex  = p.Subcribe.Start
 		tunnel.Remote = remote
+		tunnel.SentPacks = 0
 	}
 
 	if tunnel.File.Id != p.Subcribe.ResouceID {
@@ -80,11 +83,14 @@ func handleReport(tunnel *Tunnel, p *msg.Pack, remote *net.UDPAddr, mgr *TunnelM
 
 	tunnel.Bitmap.Update (p.Report.Bitmap)
 
+
 	/*
 		1. 初始80KB
 		2. 如果接收/发送速率比 < 0.7, 则降低10KB,最低30KB
 		3. 如果接收/发送速率比 > 0.7, 则提高20KB
 	*/
+	
+	/*
 	ratio := p.Report.Rate * 100 / tunnel.Rate
 	if RATE_THRESHOLD > ratio {
 		tunnel.Rate -= RATE_DEC_STEP
@@ -95,6 +101,25 @@ func handleReport(tunnel *Tunnel, p *msg.Pack, remote *net.UDPAddr, mgr *TunnelM
 	}
 	if RATE_MIN > tunnel.Rate {
 		tunnel.Rate = RATE_MIN
+	}
+	*/
+	if 0 < tunnel.SentPacks {
+		ratio := p.Report.RecvedPacks * 100 / tunnel.SentPacks
+		if RATE_THRESHOLD > ratio {
+			//tunnel.Rate -= RATE_DEC_STEP
+			tunnel.SentInterval += time.Millisecond
+			log.Println ("SentInterval = ", tunnel.SentInterval, " Ratio=", ratio)
+		} else {
+			//tunnel.Rate += RATE_INC_STEP
+			tunnel.SentInterval -= time.Millisecond * 2
+			if time.Millisecond > tunnel.SentInterval {
+				tunnel.SentInterval = time.Millisecond
+			}
+			log.Println ("SentInterval = ", tunnel.SentInterval, " Ratio=", ratio)
+		}
+		if RATE_MIN > tunnel.Rate {
+			tunnel.Rate = RATE_MIN
+		}
 	}
 	return true
 }
@@ -133,21 +158,23 @@ func sendData(tunnel *Tunnel) {
 					},
 				}
 				tunnel.Bitmap.Setbit(tunnel.SendIndex, true)
+				tunnel.SentPacks += 1
 				sendPack (p, tunnel.Conn, tunnel.Remote)
 				sent = true
 			}
 			tunnel.SendIndex += 1
 			if tunnel.SendIndex > tunnel.Bitmap.End {
 				tunnel.SendIndex = tunnel.Bitmap.Start
+				break
 			}
 		}
 	}
 }
 
 
-func adjustSendRate (tunnel *Tunnel) {
-	timeout := time.Second * time.Duration(file.SIZE_PIECE) / time.Duration(tunnel.Rate * 1024)
-	expire := time.Now ().Add (timeout)
+func adjustRecvTimeout (tunnel *Tunnel) {
+	//timeout := time.Second * time.Duration(file.SIZE_PIECE) / time.Duration(tunnel.Rate * 1024)
+	expire := time.Now ().Add (tunnel.SentInterval)
 	tunnel.Conn.SetReadDeadline (expire)
 }
 
@@ -159,7 +186,7 @@ func (tunnel *Tunnel) Run(mgr *TunnelManager) {
 	buffer := make([]byte, 1500)
 	for {
 		/// 计算读取超时,用于控制发送速率
-		adjustSendRate (tunnel)
+		adjustRecvTimeout (tunnel)
 		n, remote, err := tunnel.Conn.ReadFromUDP (buffer)
 		if nil != err {
 			nerr, ok := err.(net.Error)
